@@ -161,5 +161,122 @@
   color: var(--text-faint);
 }
 
+/* 全部 / 收藏分段切换 */
+.feed__tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(155, 133, 112, 0.13);
+}
+
+.feed__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-faint);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: color 0.2s var(--ease), background 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+
+.feed__tab:hover {
+  color: var(--text-soft);
+}
+
+.feed__tab:focus-visible {
+  outline: 2px solid var(--primary-600);
+  outline-offset: 2px;
+}
+
+.feed__tab.is-active {
+  background: rgba(255, 253, 249, 0.96);
+  color: var(--primary-600);
+  box-shadow: var(--shadow-sm);
+}
+
+.feed__tab-count {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+
+/* 动态操作栏：点赞 / 收藏 */
+.post__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding-left: 42px;
+}
+
+.post__action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 34px;
+  padding: 5px 11px;
+  border: 1px solid rgba(155, 133, 112, 0.26);
+  border-radius: 999px;
+  background: rgba(255, 253, 249, 0.72);
+  color: var(--text-soft);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.2s var(--ease), border-color 0.2s var(--ease), background 0.2s var(--ease),
+    transform 0.2s var(--ease);
+}
+
+.post__action:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(217, 98, 43, 0.4);
+  color: var(--primary-600);
+}
+
+.post__action:focus-visible {
+  outline: 2px solid var(--primary-600);
+  outline-offset: 2px;
+}
+
+.post__action:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* 激活态只换色不改布局，避免点击时列表抖动 */
+.post__action.is-active {
+  border-color: rgba(217, 98, 43, 0.42);
+  background: rgba(217, 98, 43, 0.1);
+  color: var(--primary-600);
+}
+
+.post__action.is-active .post__action-icon path {
+  fill: currentColor;
+}
+
+.post__action-icon {
+  display: inline-flex;
+}
+
+.post__action-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.post__action-count {
+  color: inherit;
+}
+
 
 

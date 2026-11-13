@@ -107,6 +107,12 @@
     font-size: 14.5px;
   }
 
+  /* 小屏解除与头像对齐的缩进，操作栏跟随内容左对齐 */
+  .post__actions {
+    padding-left: 0;
+    margin-top: 10px;
+  }
+
   .post__head {
     margin-bottom: 8px;
   }
