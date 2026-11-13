@@ -57,7 +57,14 @@ export function createPostStore(options: PostStoreOptions = {}): PostStore {
       if (content.length === 0) throw new PostValidationError('EMPTY_CONTENT')
       if (content.length > MAX_LENGTH) throw new PostValidationError('CONTENT_TOO_LONG')
 
-      const post: Post = { id: nextId(), content, createdAt: now() }
+      const post: Post = {
+        id: nextId(),
+        content,
+        createdAt: now(),
+        likes: 0,
+        liked: false,
+        favorited: false,
+      }
       posts.unshift(post)
 
       // 超出上限时丢弃最旧的记录

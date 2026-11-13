@@ -128,7 +128,14 @@ describe('postApi / create', () => {
     expect(call?.init?.method).toBe('POST')
     expect(new Headers(call?.init?.headers).get('Content-Type')).toBe('application/json')
     expect(call?.init?.body).toBe(JSON.stringify({ content: ' 你好 ' }))
-    expect(post).toEqual({ id: 'new', content: '你好', createdAt: 1_700_000_000_000 })
+    expect(post).toEqual({
+      id: 'new',
+      content: '你好',
+      createdAt: 1_700_000_000_000,
+      likes: 0,
+      liked: false,
+      favorited: false,
+    })
   })
 
   it('400 EMPTY_CONTENT 映射为同名错误码', async () => {

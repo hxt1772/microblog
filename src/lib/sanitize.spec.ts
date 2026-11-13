@@ -29,7 +29,9 @@ describe('sanitizePosts', () => {
       { id: 'keep', content: '留下', createdAt: NOW },
     ]
 
-    expect(sanitizePosts(raw, { now: NOW })).toEqual([{ id: 'keep', content: '留下', createdAt: NOW }])
+    expect(sanitizePosts(raw, { now: NOW })).toEqual([
+      { id: 'keep', content: '留下', createdAt: NOW, likes: 0, liked: false, favorited: false },
+    ])
   })
 
   it('去除首尾空白', () => {

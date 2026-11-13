@@ -3,7 +3,7 @@ import type { Post } from '@/types/post'
 import { charLength, computeStats, formatMetric } from './stats'
 
 function post(content: string, createdAt: number, id = `id-${createdAt}`): Post {
-  return { id, content, createdAt }
+  return { id, content, createdAt, likes: 0, liked: false, favorited: false }
 }
 
 // 2026-11-13（周五）15:30 作为基准时间

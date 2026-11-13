@@ -108,7 +108,14 @@ describe('createPostStore', () => {
 
     const post = store.add({ content: '确定性' })
 
-    expect(post).toEqual({ id: 'fixed-id', content: '确定性', createdAt: 42 })
+    expect(post).toEqual({
+      id: 'fixed-id',
+      content: '确定性',
+      createdAt: 42,
+      likes: 0,
+      liked: false,
+      favorited: false,
+    })
   })
 
   it('list 返回副本，调用方修改不影响内部状态', () => {
@@ -116,7 +123,7 @@ describe('createPostStore', () => {
     store.add({ content: '原始内容' })
 
     const snapshot = store.list()
-    snapshot.push({ id: 'x', content: '外部塞入', createdAt: 0 })
+    snapshot.push({ id: 'x', content: '外部塞入', createdAt: 0, likes: 0, liked: false, favorited: false })
     const first = snapshot[0]
     if (first) first.content = '被篡改'
 

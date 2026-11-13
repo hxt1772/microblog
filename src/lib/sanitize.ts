@@ -11,7 +11,7 @@ export interface SanitizeOptions {
 
 /**
  * 清洗本地数据：丢弃脏项、去空白、截断超长内容、补齐或重写 id、
- * 修正非法时间、按时间倒序并裁剪到最近 300 条。不修改入参。
+ * 修正非法时间、规范化点赞 / 收藏字段、按时间倒序并裁剪到最近 300 条。不修改入参。
  */
 export function sanitizePosts(raw: unknown, options: SanitizeOptions = {}): Post[] {
   if (!Array.isArray(raw)) return []
@@ -34,11 +34,25 @@ export function sanitizePosts(raw: unknown, options: SanitizeOptions = {}): Post
     const parsed = Number(record.createdAt)
     const createdAt = Number.isFinite(parsed) && parsed > 0 ? parsed : now
 
-    result.push({ id, content, createdAt })
+    result.push({
+      id,
+      content,
+      createdAt,
+      likes: normalizeLikes(record.likes),
+      liked: record.liked === true,
+      favorited: record.favorited === true,
+    })
   }
 
   result.sort((a, b) => b.createdAt - a.createdAt)
   return result.slice(0, MAX_ENTRIES)
+}
+
+/** 点赞数兜底：非数字、负数、NaN 一律归零，小数向下取整。 */
+function normalizeLikes(raw: unknown): number {
+  const parsed = typeof raw === 'number' ? raw : Number.NaN
+  if (!Number.isFinite(parsed) || parsed <= 0) return 0
+  return Math.floor(parsed)
 }
 
 function resolveId(rawId: unknown, seen: Set<string>, createId: () => string): string {

@@ -6,7 +6,15 @@ import PostItem from './PostItem.vue'
 const NOW = new Date(2026, 10, 13, 15, 30, 0).getTime()
 
 function makePost(overrides: Partial<Post> = {}): Post {
-  return { id: 'p1', content: '今天天气不错', createdAt: NOW - 3 * 60 * 1000, ...overrides }
+  return {
+    id: 'p1',
+    content: '今天天气不错',
+    createdAt: NOW - 3 * 60 * 1000,
+    likes: 0,
+    liked: false,
+    favorited: false,
+    ...overrides,
+  }
 }
 
 describe('PostItem', () => {
