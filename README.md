@@ -1,4 +1,4 @@
-# 有线 · Moments
+# 有线微语 · Moments
 
 一个极简的本地短动态信息流，使用纯 HTML + CSS + JavaScript 编写，无框架、无构建步骤、无第三方依赖。
 
