@@ -1,0 +1,113 @@
+/* =========================================================
+   响应式
+   ========================================================= */
+@media (max-width: 720px) {
+  .page {
+    padding: 26px 16px 40px;
+  }
+
+  .scene__ridge--far {
+    height: 34vh;
+  }
+
+  .scene__ridge--mid {
+    height: 26vh;
+  }
+
+  .scene__ridge--near {
+    height: 19vh;
+  }
+
+  .scene__sun {
+    top: 5%;
+    right: 5%;
+    width: 48vw;
+  }
+
+  .leaf:nth-child(n + 5) {
+    display: none;
+  }
+
+  .scene__grain {
+    opacity: 0.2;
+  }
+
+  .topbar {
+    margin-bottom: 20px;
+  }
+
+  .brand__mark {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+  }
+
+  .status {
+    display: none;
+  }
+
+  .composer {
+    padding: 16px 16px 12px;
+    border-radius: 18px;
+  }
+
+  .composer__input {
+    font-size: 14.5px;
+    min-height: 58px;
+  }
+
+  .composer__hint {
+    display: none;
+  }
+
+  .btn {
+    padding: 8px 17px;
+  }
+
+  .stats {
+    padding: 15px 16px 13px;
+    border-radius: 18px;
+  }
+
+  .stats__header {
+    margin-bottom: 11px;
+  }
+
+  .stat {
+    padding: 8px 10px 9px;
+  }
+
+  .stat__value {
+    font-size: 19px;
+  }
+
+  .stat__unit {
+    font-size: 10px;
+  }
+
+  .chart {
+    height: 92px;
+    gap: 5px;
+  }
+
+  .chart__day {
+    font-size: 9.5px;
+  }
+
+  .feed {
+    margin-top: 28px;
+  }
+
+  .post {
+    padding: 15px 16px;
+  }
+
+  .post__content {
+    padding-left: 0;
+    font-size: 14.5px;
+  }
+
+  .post__head {
+    margin-bottom: 8px;
+  }
+}

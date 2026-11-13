@@ -1,0 +1,129 @@
+/* =========================================================
+   页面骨架与顶部品牌栏
+   ========================================================= */
+.page {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 40px 24px 56px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: inherit;
+  border-radius: var(--radius-sm);
+}
+
+.brand:focus-visible {
+  outline: 2px solid var(--primary-500);
+  outline-offset: 4px;
+}
+
+.brand__mark {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  background: var(--gradient);
+  color: #fff;
+  box-shadow: var(--shadow-glow);
+  transition: transform 0.35s var(--ease);
+}
+
+.brand:hover .brand__mark {
+  transform: rotate(-4deg) scale(1.04);
+}
+
+.brand__mark svg {
+  width: 21px;
+  height: 21px;
+}
+
+.brand__text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.brand__name {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.brand__sub {
+  margin-top: 4px;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  color: var(--text-faint);
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  border: 1px solid rgba(234, 217, 198, 0.9);
+  border-radius: 999px;
+  background: rgba(255, 253, 249, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-soft);
+  white-space: nowrap;
+}
+
+.status__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 3px rgba(95, 125, 78, 0.18);
+}
+
+/* 玻璃卡片 */
+.glass {
+  background: rgba(255, 253, 249, 0.88);
+  backdrop-filter: blur(18px) saturate(1.08);
+  -webkit-backdrop-filter: blur(18px) saturate(1.08);
+  border: 1px solid rgba(255, 252, 246, 0.92);
+  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+/* 底部 */
+.footer {
+  margin-top: 44px;
+  text-align: center;
+}
+
+.footer p {
+  display: inline-block;
+  margin: 0;
+  padding: 7px 15px;
+  border: 1px solid rgba(255, 250, 242, 0.8);
+  border-radius: 999px;
+  background: rgba(255, 253, 249, 0.8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-size: 12px;
+  color: #57453a;
+  letter-spacing: 0.01em;
+  box-shadow: var(--shadow-xs);
+}
+

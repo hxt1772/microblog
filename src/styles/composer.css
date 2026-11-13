@@ -1,0 +1,165 @@
+/* =========================================================
+   发布卡片
+   ========================================================= */
+.composer {
+  border-radius: var(--radius-lg);
+  padding: 20px 22px 16px;
+  transition: box-shadow 0.3s var(--ease), border-color 0.3s var(--ease), transform 0.3s var(--ease);
+}
+
+.composer:focus-within {
+  border-color: rgba(217, 98, 43, 0.34);
+  box-shadow: var(--shadow-md), 0 0 0 4px rgba(217, 98, 43, 0.12);
+}
+
+.composer__body {
+  display: flex;
+  gap: 12px;
+}
+
+.avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--gradient);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  box-shadow: 0 4px 12px -4px rgba(178, 58, 72, 0.45);
+}
+
+.avatar--me {
+  margin-top: 2px;
+}
+
+.composer__field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.composer__input {
+  display: block;
+  width: 100%;
+  min-height: 62px;
+  max-height: 320px;
+  padding: 6px 2px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  line-height: 1.7;
+  resize: none;
+  outline: none;
+  overflow-y: auto;
+}
+
+.composer__input::placeholder {
+  color: var(--text-faint);
+}
+
+.composer__hint {
+  margin: 4px 0 0;
+  font-size: 11.5px;
+  color: var(--text-faint);
+  letter-spacing: 0.01em;
+}
+
+.composer__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.counter {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+  transition: color 0.2s var(--ease);
+}
+
+.counter__value {
+  color: var(--text-soft);
+}
+
+.counter.is-near {
+  color: var(--amber);
+}
+
+.counter.is-near .counter__value {
+  color: var(--amber);
+}
+
+.counter.is-over {
+  color: var(--red);
+}
+
+.counter.is-over .counter__value {
+  color: var(--red);
+}
+
+/* 按钮 */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 20px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--gradient);
+  color: #fff;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: var(--shadow-glow);
+  transition: transform 0.2s var(--ease), box-shadow 0.25s var(--ease), opacity 0.2s var(--ease), filter 0.2s var(--ease);
+}
+
+.btn__icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px -12px rgba(178, 58, 72, 0.55);
+  filter: saturate(1.08);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.985);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--primary-600);
+  outline-offset: 3px;
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  background: var(--surface-muted);
+  color: var(--text-faint);
+  box-shadow: none;
+  opacity: 0.9;
+}
+
+.btn.is-success {
+  background: linear-gradient(135deg, #7a9663, #5f7d4e);
+  box-shadow: 0 12px 26px -12px rgba(95, 125, 78, 0.6);
+}
+

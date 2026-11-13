@@ -7,9 +7,16 @@ desktop.ini
 
 # 依赖与日志
 node_modules/
+node_modules.bak/
 npm-debug.log*
 yarn-error.log*
+
+# 构建产物与测试输出
+dist/
+coverage/
+*.tsbuildinfo
 
 # 本地环境
 .env
 .env.local
+*.local
