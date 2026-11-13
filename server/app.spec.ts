@@ -132,6 +132,12 @@ describe('createApp', () => {
       count() {
         throw new Error('boom: 内部计数细节')
       },
+      toggleLike() {
+        throw new Error('boom: 内部点赞细节')
+      },
+      toggleFavorite() {
+        throw new Error('boom: 内部收藏细节')
+      },
     }
     const app = createApp({ store: brokenStore })
 
@@ -152,5 +158,103 @@ describe('createApp', () => {
     const preflight = await app.request(`${API_BASE_PATH}/posts`, { method: 'OPTIONS' })
     expect(preflight.headers.get('access-control-allow-origin')).toBe('*')
     expect(preflight.headers.get('access-control-allow-methods')).toContain('POST')
+  })
+})
+
+describe('createApp 互动接口', () => {
+  /** 建一个含一条动态的应用，返回 app 与动态 id。 */
+  function setup(): { app: ReturnType<typeof createApp>; id: string } {
+    const store = createPostStore()
+    const post = store.add({ content: '今天风很大' })
+    return { app: createApp({ store }), id: post.id }
+  }
+
+  it('POST /api/posts/:id/like 首次点赞返回 200 与最新状态', async () => {
+    const { app, id } = setup()
+
+    const response = await app.request(`${API_BASE_PATH}/posts/${id}/like`, { method: 'POST' })
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('content-type')).toContain('application/json')
+    const payload = (await response.json()) as {
+      post: { id: string; likes: number; liked: boolean; favorited: boolean }
+    }
+    expect(payload.post.id).toBe(id)
+    expect(payload.post.likes).toBe(1)
+    expect(payload.post.liked).toBe(true)
+    expect(payload.post.favorited).toBe(false)
+  })
+
+  it('POST /api/posts/:id/like 再次调用取消点赞', async () => {
+    const { app, id } = setup()
+
+    await app.request(`${API_BASE_PATH}/posts/${id}/like`, { method: 'POST' })
+    const response = await app.request(`${API_BASE_PATH}/posts/${id}/like`, { method: 'POST' })
+
+    expect(response.status).toBe(200)
+    const payload = (await response.json()) as { post: { likes: number; liked: boolean } }
+    expect(payload.post.likes).toBe(0)
+    expect(payload.post.liked).toBe(false)
+  })
+
+  it('POST /api/posts/:id/favorite 切换收藏且不影响点赞', async () => {
+    const { app, id } = setup()
+
+    const response = await app.request(`${API_BASE_PATH}/posts/${id}/favorite`, { method: 'POST' })
+
+    expect(response.status).toBe(200)
+    const payload = (await response.json()) as { post: { likes: number; liked: boolean; favorited: boolean } }
+    expect(payload.post.favorited).toBe(true)
+    expect(payload.post.liked).toBe(false)
+    expect(payload.post.likes).toBe(0)
+  })
+
+  it('点赞后 GET /api/posts 能看到最新状态', async () => {
+    const { app, id } = setup()
+
+    await app.request(`${API_BASE_PATH}/posts/${id}/like`, { method: 'POST' })
+    await app.request(`${API_BASE_PATH}/posts/${id}/favorite`, { method: 'POST' })
+
+    const listResponse = await app.request(`${API_BASE_PATH}/posts`)
+    const list = (await listResponse.json()) as {
+      posts: { id: string; likes: number; liked: boolean; favorited: boolean }[]
+    }
+    expect(list.posts).toHaveLength(1)
+    expect(list.posts[0]?.id).toBe(id)
+    expect(list.posts[0]?.likes).toBe(1)
+    expect(list.posts[0]?.liked).toBe(true)
+    expect(list.posts[0]?.favorited).toBe(true)
+  })
+
+  it('未知 id 的点赞 / 收藏返回 404 JSON 与 POST_NOT_FOUND', async () => {
+    const { app } = setup()
+
+    for (const action of ['like', 'favorite']) {
+      const response = await app.request(`${API_BASE_PATH}/posts/missing/${action}`, { method: 'POST' })
+
+      expect(response.status).toBe(404)
+      expect(response.headers.get('content-type')).toContain('application/json')
+      const payload = (await response.json()) as { error: { code: string; message: string } }
+      expect(payload.error.code).toBe('POST_NOT_FOUND')
+      expect(payload.error.message.length).toBeGreaterThan(0)
+    }
+  })
+
+  it('无效 id 一律返回 404 JSON，不会被当成命中记录', async () => {
+    const { app } = setup()
+
+    // 空段匹配不到 `:id` 路由，落到全局 404；但绝不能是 200
+    const emptyId = await app.request(`${API_BASE_PATH}/posts//like`, { method: 'POST' })
+    expect(emptyId.status).toBe(404)
+    expect(emptyId.headers.get('content-type')).toContain('application/json')
+
+    // 空白 id 能匹配路由但查不到记录，走 POST_NOT_FOUND
+    const blankId = await app.request(`${API_BASE_PATH}/posts/${encodeURIComponent(' ')}/favorite`, {
+      method: 'POST',
+    })
+    expect(blankId.status).toBe(404)
+    expect(blankId.headers.get('content-type')).toContain('application/json')
+    const payload = (await blankId.json()) as { error: { code: string } }
+    expect(payload.error.code).toBe('POST_NOT_FOUND')
   })
 })
