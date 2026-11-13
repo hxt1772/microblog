@@ -4,14 +4,31 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="有线微语 Moments — 一个轻量的本地短动态记录工具，数据只保存在你的浏览器中。" />
-  <meta name="theme-color" content="#F7F8FB" />
+  <meta name="theme-color" content="#FDF0DD" />
   <title>有线微语 · Moments</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%236366F1'/%3E%3Cstop offset='1' stop-color='%238B5CF6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='18' fill='url(%23g)'/%3E%3Cpath d='M20 24h24M20 32h24M20 40h14' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23F2A65A'/%3E%3Cstop offset='1' stop-color='%23B23A48'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='18' fill='url(%23g)'/%3E%3Cpath d='M20 24h24M20 32h24M20 40h14' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <div class="ambient ambient--top" aria-hidden="true"></div>
-  <div class="ambient ambient--bottom" aria-hidden="true"></div>
+  <div class="scene" aria-hidden="true">
+    <div class="scene__sky"></div>
+    <div class="scene__sun"></div>
+    <div class="scene__haze"></div>
+    <div class="scene__ridge scene__ridge--far"></div>
+    <div class="scene__ridge scene__ridge--mid"></div>
+    <div class="scene__ridge scene__ridge--near"></div>
+    <div class="scene__grain"></div>
+    <div class="leaves">
+      <span class="leaf" style="--x: 4%; --delay: -1.2s; --duration: 18s; --size: 15px; --drift: 52px; --hue: 0deg;"></span>
+      <span class="leaf" style="--x: 16%; --delay: -9.4s; --duration: 15s; --size: 11px; --drift: -38px; --hue: -14deg;"></span>
+      <span class="leaf" style="--x: 29%; --delay: -5.6s; --duration: 20s; --size: 20px; --drift: 64px; --hue: 12deg;"></span>
+      <span class="leaf" style="--x: 44%; --delay: -13.2s; --duration: 16.5s; --size: 13px; --drift: -46px; --hue: 26deg;"></span>
+      <span class="leaf" style="--x: 58%; --delay: -3.4s; --duration: 19s; --size: 17px; --drift: 58px; --hue: -8deg;"></span>
+      <span class="leaf" style="--x: 71%; --delay: -11.8s; --duration: 14.5s; --size: 12px; --drift: -40px; --hue: 18deg;"></span>
+      <span class="leaf" style="--x: 84%; --delay: -7.2s; --duration: 17.5s; --size: 21px; --drift: 48px; --hue: 4deg;"></span>
+      <span class="leaf" style="--x: 94%; --delay: -15.6s; --duration: 21s; --size: 14px; --drift: -54px; --hue: -20deg;"></span>
+    </div>
+  </div>
 
   <div class="page">
     <header class="topbar">
@@ -78,7 +95,7 @@
             <svg viewBox="0 0 120 90" fill="none">
               <rect x="8" y="14" width="104" height="62" rx="16" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
               <path d="M28 34h64M28 46h48M28 58h28" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".55" />
-              <circle cx="98" cy="58" r="12" fill="#EEF0F8" stroke="currentColor" stroke-width="2" />
+              <circle cx="98" cy="58" r="12" fill="#F7E7D5" stroke="currentColor" stroke-width="2" />
               <path d="M94 58h8M98 54v8" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
             </svg>
           </div>
