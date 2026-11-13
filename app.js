@@ -80,7 +80,7 @@
         return sanitizePosts(JSON.parse(text));
       } catch (error) {
         state.storageAvailable = false;
-        console.warn("[微语] 本地数据读取失败，本次会话使用临时内存存储。", error);
+        console.warn("[有线] 本地数据读取失败，本次会话使用临时内存存储。", error);
         return [];
       }
     },
@@ -96,7 +96,7 @@
       } catch (error) {
         state.storageAvailable = false;
         state.memoryFallback = posts;
-        console.warn("[微语] 本地存储不可用（可能为隐私模式或空间已满），本次会话使用临时内存存储。", error);
+        console.warn("[有线] 本地存储不可用（可能为隐私模式或空间已满），本次会话使用临时内存存储。", error);
         return false;
       }
     }
