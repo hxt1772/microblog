@@ -3,7 +3,7 @@ import { cors } from 'hono/cors'
 import type { Context } from 'hono'
 import { API_BASE_PATH } from '../shared/constants'
 import type { PostInput } from '../shared/post'
-import { PostValidationError, createPostStore } from './store'
+import { PostNotFoundError, PostValidationError, createPostStore } from './store'
 import type { PostStore } from './store'
 
 /** 应用装配选项。 */
@@ -54,6 +54,11 @@ export function createApp(options: AppOptions = {}): Hono {
 
   app.post(`${API_BASE_PATH}/posts`, async (c) => c.json({ post: store.add(await readPostInput(c)) }, 201))
 
+  // 互动接口：再点一次即取消，成功统一返回 200 与最新记录
+  app.post(`${API_BASE_PATH}/posts/:id/like`, (c) => c.json({ post: store.toggleLike(c.req.param('id')) }))
+
+  app.post(`${API_BASE_PATH}/posts/:id/favorite`, (c) => c.json({ post: store.toggleFavorite(c.req.param('id')) }))
+
   // Hono 默认 404 是纯文本，这里统一成 JSON 错误体
   app.notFound((c) => c.json({ error: { code: 'NOT_FOUND', message: '接口不存在' } }, 404))
 
@@ -64,6 +69,10 @@ export function createApp(options: AppOptions = {}): Hono {
 
     if (error instanceof InvalidBodyError) {
       return c.json({ error: { code: 'INVALID_BODY', message: error.message } }, 400)
+    }
+
+    if (error instanceof PostNotFoundError) {
+      return c.json({ error: { code: error.code, message: error.message } }, 404)
     }
 
     // 未预期异常一律脱敏，避免把内部实现细节透给客户端
