@@ -21,10 +21,14 @@ export const usePostsStore = defineStore('posts', () => {
   const apiAvailable = ref(true)
   /** 统计与相对时间共用的“当前时间”，由 ticker 推进以便跨天重算。 */
   const now = ref(Date.now())
+  /** 互动请求飞行中的动态 id，同一 id 不允许并发点击，也用于禁用按钮。 */
+  const pendingIds = ref<Set<string>>(new Set())
 
   const stats = computed(() => computeStats(posts.value, now.value))
   const todayKey = computed(() => dateKey(now.value))
   const count = computed(() => posts.value.length)
+  const favorites = computed(() => posts.value.filter((post) => post.favorited === true))
+  const favoriteCount = computed(() => favorites.value.length)
 
   /** 从服务端拉取列表；失败时降级为空列表并标记服务不可用。 */
   async function hydrate(at: number = Date.now()): Promise<void> {
@@ -41,6 +45,8 @@ export const usePostsStore = defineStore('posts', () => {
     } finally {
       hydrated.value = true
       loading.value = false
+      // 列表已整体替换，旧的 pending 记录不再对应任何可见行
+      pendingIds.value.clear()
     }
   }
 
@@ -71,6 +77,45 @@ export const usePostsStore = defineStore('posts', () => {
     }
   }
 
+  /** 该 id 是否有互动请求在飞行中，供按钮禁用与去重判断。 */
+  function isPending(id: string): boolean {
+    return pendingIds.value.has(id)
+  }
+
+  /**
+   * 点赞 / 收藏共用的切换流程：不做乐观更新，
+   * 成功后用服务端记录原位替换（保持列表顺序），失败时只标记服务不可用、列表不变。
+   * 同一 id 请求飞行中时再次触发直接返回 false，不重复发请求。
+   */
+  async function toggleReaction(
+    id: string,
+    request: (target: string) => Promise<Post>,
+  ): Promise<boolean> {
+    if (pendingIds.value.has(id)) return false
+
+    pendingIds.value.add(id)
+    try {
+      const post = await request(id)
+      const index = posts.value.findIndex((item) => item.id === id)
+      if (index >= 0) posts.value[index] = post
+      apiAvailable.value = true
+      return true
+    } catch {
+      apiAvailable.value = false
+      return false
+    } finally {
+      pendingIds.value.delete(id)
+    }
+  }
+
+  function toggleLike(id: string): Promise<boolean> {
+    return toggleReaction(id, (target) => api.toggleLike(target))
+  }
+
+  function toggleFavorite(id: string): Promise<boolean> {
+    return toggleReaction(id, (target) => api.toggleFavorite(target))
+  }
+
   /** 由 App 的每分钟 ticker 调用，推进基准时间以刷新相对时间与统计。 */
   function syncTicker(at: number = Date.now()): void {
     now.value = at
@@ -82,11 +127,17 @@ export const usePostsStore = defineStore('posts', () => {
     loading,
     apiAvailable,
     now,
+    pendingIds,
     stats,
     todayKey,
     count,
+    favorites,
+    favoriteCount,
     hydrate,
     publish,
+    isPending,
+    toggleLike,
+    toggleFavorite,
     syncTicker,
   }
 })

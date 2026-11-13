@@ -2,6 +2,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MAX_ENTRIES, MAX_LENGTH } from '@/config/constants'
 import { installFakeServer } from '@/test-utils/fakeServer'
+import type { Post } from '@/types/post'
 import { usePostsStore } from './usePostsStore'
 
 // 2026-11-13（周五）15:30
@@ -26,6 +27,72 @@ function countRequests(): () => number {
     return inner(input, init)
   })
   return () => total
+}
+
+/** 构造一条动态，默认是最新的一条未点赞未收藏记录。 */
+function seedPost(overrides: Partial<Post> = {}): Post {
+  return {
+    id: 'p1',
+    content: '第一条',
+    createdAt: NOW,
+    likes: 0,
+    liked: false,
+    favorited: false,
+    ...overrides,
+  }
+}
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  })
+}
+
+/** 按「切换」语义算出互动后的记录，模拟服务端行为。 */
+function toggleReaction(post: Post, kind: 'like' | 'favorite'): Post {
+  if (kind === 'like') {
+    return { ...post, liked: !post.liked, likes: post.liked ? post.likes - 1 : post.likes + 1 }
+  }
+  return { ...post, favorited: !post.favorited }
+}
+
+interface StubPostsServerOptions {
+  /** GET /api/posts 返回的列表。 */
+  initial: readonly Post[]
+  /** 互动请求的响应；可返回永不 settle 的 Promise 以观察 pending 状态。 */
+  react: (kind: 'like' | 'favorite', post: Post) => Response | Promise<Response>
+}
+
+/**
+ * 只实现本任务需要的两个端点：列表与点赞 / 收藏。
+ * 互动路由在其它分支并行实现，这里用替身隔离，避免测试依赖未合并的后端。
+ */
+function stubPostsServer(options: StubPostsServerOptions): { reactionCalls: () => string[] } {
+  const reactions: string[] = []
+  const find = (id: string): Post | undefined =>
+    options.initial.find((post) => post.id === id)
+
+  vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url =
+      typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
+    const method = init?.method ?? 'GET'
+
+    if (method === 'GET') return jsonResponse({ posts: options.initial })
+
+    const match = /^\/api\/posts\/([^/]+)\/(like|favorite)$/.exec(url)
+    if (!match) return jsonResponse({ error: { code: 'NOT_IMPLEMENTED' } }, 500)
+
+    reactions.push(`${method} ${url}`)
+    const target = find(decodeURIComponent(match[1] as string))
+    if (!target) {
+      return jsonResponse({ error: { code: 'POST_NOT_FOUND', message: '动态不存在' } }, 404)
+    }
+
+    return options.react(match[2] as 'like' | 'favorite', target)
+  })
+
+  return { reactionCalls: () => reactions }
 }
 
 describe('usePostsStore / 初始状态与 hydrate', () => {
@@ -236,6 +303,150 @@ describe('usePostsStore / publish', () => {
     expect(store.posts[0]?.content).toBe('最新一条')
     expect(store.posts.some((post) => post.content === `旧内容 ${MAX_ENTRIES - 1}`)).toBe(false)
     expect(server.store.count()).toBe(MAX_ENTRIES)
+  })
+})
+
+describe('usePostsStore / 点赞与收藏', () => {
+  it('点赞成功后原位替换同 id 记录并保持列表顺序', async () => {
+    const initial = [
+      seedPost({ id: 'p2', content: '最新的', createdAt: NOW }),
+      seedPost({ id: 'p1', content: '较早的', createdAt: NOW - 60_000 }),
+    ]
+    stubPostsServer({
+      initial,
+      react: (kind, post) => jsonResponse({ post: toggleReaction(post, kind) }),
+    })
+    const store = usePostsStore()
+    await store.hydrate(NOW)
+
+    expect(await store.toggleLike('p1')).toBe(true)
+
+    expect(store.posts.map((post) => post.id)).toEqual(['p2', 'p1'])
+    expect(store.posts[1]).toMatchObject({ id: 'p1', likes: 1, liked: true, favorited: false })
+    expect(store.posts[0]).toMatchObject({ id: 'p2', likes: 0, liked: false })
+    expect(store.apiAvailable).toBe(true)
+  })
+
+  it('收藏成功后解除收藏同样以服务端结果为准', async () => {
+    const initial = [seedPost({ id: 'p1', favorited: true })]
+    stubPostsServer({ initial, react: (kind, post) => jsonResponse({ post: toggleReaction(post, kind) }) })
+    const store = usePostsStore()
+    await store.hydrate(NOW)
+
+    expect(await store.toggleFavorite('p1')).toBe(true)
+
+    expect(store.posts[0]).toMatchObject({ id: 'p1', favorited: false })
+    expect(store.favoriteCount).toBe(0)
+  })
+
+  it('同一 id 请求飞行中时重复点击直接返回 false 且不发第二次请求', async () => {
+    const initial = [seedPost({ id: 'p1' })]
+    let release: ((response: Response) => void) | undefined
+    const { reactionCalls } = stubPostsServer({
+      initial,
+      react: () => new Promise<Response>((resolve) => {
+        release = resolve
+      }),
+    })
+    const store = usePostsStore()
+    await store.hydrate(NOW)
+
+    const first = store.toggleLike('p1')
+    expect(store.isPending('p1')).toBe(true)
+    expect(await store.toggleLike('p1')).toBe(false)
+    // 同一 id 的 pending 状态对两个互动按钮一致生效
+    expect(await store.toggleFavorite('p1')).toBe(false)
+    expect(reactionCalls()).toHaveLength(1)
+
+    release?.(jsonResponse({ post: toggleReaction(initial[0], 'like') }))
+    expect(await first).toBe(true)
+    expect(store.isPending('p1')).toBe(false)
+  })
+
+  it('不同 id 可以并发请求', async () => {
+    const initial = [seedPost({ id: 'p1' }), seedPost({ id: 'p2', createdAt: NOW - 1000 })]
+    stubPostsServer({ initial, react: (kind, post) => jsonResponse({ post: toggleReaction(post, kind) }) })
+    const store = usePostsStore()
+    await store.hydrate(NOW)
+
+    const results = await Promise.all([store.toggleLike('p1'), store.toggleFavorite('p2')])
+
+    expect(results).toEqual([true, true])
+    expect(store.posts.find((post) => post.id === 'p1')?.liked).toBe(true)
+    expect(store.posts.find((post) => post.id === 'p2')?.favorited).toBe(true)
+  })
+
+  it('网络失败时返回 false、置 apiAvailable=false 且列表不变', async () => {
+    const initial = [seedPost({ id: 'p1', likes: 5 })]
+    stubPostsServer({ initial, react: () => Promise.reject(new Error('offline')) })
+    const store = usePostsStore()
+    await store.hydrate(NOW)
+    const snapshot = store.posts.map((post) => ({ ...post }))
+
+    expect(await store.toggleLike('p1')).toBe(false)
+
+    expect(store.posts).toEqual(snapshot)
+    expect(store.apiAvailable).toBe(false)
+    expect(store.isPending('p1')).toBe(false)
+  })
+
+  it('服务端 404 时同样返回 false 且列表不变', async () => {
+    const initial = [seedPost({ id: 'p1' })]
+    stubPostsServer({
+      initial,
+      react: () =>
+        jsonResponse({ error: { code: 'POST_NOT_FOUND', message: '动态不存在' } }, 404),
+    })
+    const store = usePostsStore()
+    await store.hydrate(NOW)
+
+    expect(await store.toggleFavorite('p1')).toBe(false)
+    expect(store.posts[0]).toMatchObject({ id: 'p1', favorited: false })
+    expect(store.apiAvailable).toBe(false)
+  })
+
+  it('favorites 与 favoriteCount 只统计已收藏记录并保持原顺序', async () => {
+    const initial = [
+      seedPost({ id: 'p3', content: '最新的', createdAt: NOW }),
+      seedPost({ id: 'p2', content: '中间的', createdAt: NOW - 1000, favorited: true }),
+      seedPost({ id: 'p1', content: '较早的', createdAt: NOW - 2000, favorited: true }),
+    ]
+    stubPostsServer({ initial, react: (kind, post) => jsonResponse({ post: toggleReaction(post, kind) }) })
+    const store = usePostsStore()
+    await store.hydrate(NOW)
+
+    expect(store.favorites.map((post) => post.id)).toEqual(['p2', 'p1'])
+    expect(store.favoriteCount).toBe(2)
+  })
+
+  it('hydrate 成功后清空 pendingIds', async () => {
+    const initial = [seedPost({ id: 'p1' })]
+    stubPostsServer({ initial, react: () => new Promise<Response>(() => {}) })
+    const store = usePostsStore()
+    await store.hydrate(NOW)
+
+    void store.toggleLike('p1')
+    expect(store.isPending('p1')).toBe(true)
+
+    await store.hydrate(NOW)
+
+    expect(store.isPending('p1')).toBe(false)
+  })
+
+  it('hydrate 失败后同样清空 pendingIds', async () => {
+    const initial = [seedPost({ id: 'p1' })]
+    stubPostsServer({ initial, react: () => new Promise<Response>(() => {}) })
+    const store = usePostsStore()
+    await store.hydrate(NOW)
+
+    void store.toggleFavorite('p1')
+    expect(store.isPending('p1')).toBe(true)
+
+    stubBrokenFetch()
+    await store.hydrate(NOW)
+
+    expect(store.isPending('p1')).toBe(false)
+    expect(store.apiAvailable).toBe(false)
   })
 })
 
