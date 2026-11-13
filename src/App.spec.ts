@@ -120,3 +120,110 @@ describe('App 发布闭环', () => {
     expect(wrapper.find('[data-testid="post-item"]').text()).toContain('<script>alert(1)</script>')
   })
 })
+
+describe('App 点赞与收藏闭环', () => {
+  const NOW = new Date(2026, 10, 13, 15, 30, 0).getTime()
+
+  /** 点击第 index 条动态上的指定按钮。 */
+  async function clickAction(wrapper: VueWrapper, index: number, testId: string): Promise<void> {
+    const item = wrapper.findAll('[data-testid="post-item"]')[index]
+    if (!item) throw new Error(`没有第 ${index} 条动态`)
+    await item.find(`[data-testid="${testId}"]`).trigger('click')
+    await flushPromises()
+  }
+
+  it('点赞后计数与状态更新，重启客户端仍能从服务端恢复', async () => {
+    const { wrapper, server } = await mountWithServer({
+      now: () => NOW,
+      seed: [{ content: '值得点赞', createdAt: NOW }],
+    })
+
+    await clickAction(wrapper, 0, 'like-button')
+
+    const item = wrapper.find('[data-testid="post-item"]')
+    expect(item.find('[data-testid="like-count"]').text()).toBe('1')
+    expect(item.find('[data-testid="like-button"]').attributes('aria-pressed')).toBe('true')
+
+    // 服务端是唯一真源
+    expect(server.store.list()[0]).toMatchObject({ likes: 1, liked: true })
+
+    wrapper.unmount()
+    const second = await mountApp()
+    const restored = second.find('[data-testid="post-item"]')
+    expect(restored.find('[data-testid="like-count"]').text()).toBe('1')
+    expect(restored.find('[data-testid="like-button"]').attributes('aria-pressed')).toBe('true')
+  })
+
+  it('再次点击取消点赞，收藏与点赞互不影响', async () => {
+    const { wrapper, server } = await mountWithServer({
+      now: () => NOW,
+      seed: [{ content: '互动动态', createdAt: NOW }],
+    })
+
+    await clickAction(wrapper, 0, 'like-button')
+    await clickAction(wrapper, 0, 'favorite-button')
+
+    let item = wrapper.find('[data-testid="post-item"]')
+    expect(item.find('[data-testid="like-button"]').attributes('aria-pressed')).toBe('true')
+    expect(item.find('[data-testid="favorite-button"]').attributes('aria-pressed')).toBe('true')
+    expect(server.store.list()[0]).toMatchObject({ liked: true, favorited: true, likes: 1 })
+
+    await clickAction(wrapper, 0, 'like-button')
+
+    item = wrapper.find('[data-testid="post-item"]')
+    expect(item.find('[data-testid="like-count"]').text()).toBe('0')
+    expect(item.find('[data-testid="like-button"]').attributes('aria-pressed')).toBe('false')
+    // 取消点赞不影响收藏
+    expect(item.find('[data-testid="favorite-button"]').attributes('aria-pressed')).toBe('true')
+    expect(server.store.list()[0]).toMatchObject({ liked: false, favorited: true, likes: 0 })
+  })
+
+  it('收藏筛选只展示已收藏动态，取消后回到收藏空态', async () => {
+    const { wrapper } = await mountWithServer({
+      now: () => NOW,
+      seed: [
+        { content: '较旧的一条', createdAt: NOW - 60_000 },
+        { content: '较新的一条', createdAt: NOW },
+      ],
+    })
+
+    expect(wrapper.findAll('[data-testid="post-item"]')).toHaveLength(2)
+
+    // 列表按时间倒序：第 0 条是「较新的一条」
+    await clickAction(wrapper, 0, 'favorite-button')
+    await wrapper.find('[data-testid="feed-tab-favorites"]').trigger('click')
+    await flushPromises()
+
+    const favorites = wrapper.findAll('[data-testid="post-item"]')
+    expect(favorites).toHaveLength(1)
+    expect(favorites[0]?.text()).toContain('较新的一条')
+    expect(wrapper.find('[data-testid="favorites-count"]').text()).toBe('1')
+    expect(wrapper.find('[data-testid="feed-tab-favorites"]').attributes('aria-pressed')).toBe('true')
+
+    await clickAction(wrapper, 0, 'favorite-button')
+
+    expect(wrapper.find('[data-testid="favorites-empty"]').exists()).toBe(true)
+    expect(wrapper.findAll('[data-testid="post-item"]')).toHaveLength(0)
+    expect(wrapper.find('[data-testid="favorites-count"]').text()).toBe('0')
+
+    await wrapper.find('[data-testid="feed-tab-all"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.findAll('[data-testid="post-item"]')).toHaveLength(2)
+  })
+
+  it('互动请求失败时提示服务不可用且状态不变', async () => {
+    const { wrapper } = await mountWithServer({
+      now: () => NOW,
+      seed: [{ content: '点不动', createdAt: NOW }],
+    })
+    vi.stubGlobal('fetch', () => Promise.reject(new Error('offline')))
+
+    await clickAction(wrapper, 0, 'like-button')
+
+    const item = wrapper.find('[data-testid="post-item"]')
+    expect(item.find('[data-testid="like-count"]').text()).toBe('0')
+    expect(item.find('[data-testid="like-button"]').attributes('aria-pressed')).toBe('false')
+    expect(wrapper.find('[data-testid="toast"]').text()).toBe('操作失败，服务暂时不可用')
+    expect(usePostsStore().apiAvailable).toBe(false)
+  })
+})
