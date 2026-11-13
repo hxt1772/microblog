@@ -33,6 +33,15 @@ npm run typecheck  # 仅类型检查
 
 打开 http://localhost:5173 即可使用；前端所有请求都是同源相对路径 `/api`，由 Vite 代理转发到 `http://localhost:8787`。
 
+首次启动后端会自动注入 10 条范例动态（覆盖「无互动 / 仅点赞 / 仅收藏 / 两者都有」四种状态，并铺满近 7 天），统计看板与收藏视图开箱即有内容。想要从空列表开始：
+
+```bash
+SEED_EXAMPLES=0 npm run dev:api   # macOS / Linux
+$env:SEED_EXAMPLES=0; npm run dev:api   # Windows PowerShell
+```
+
+范例数据集中定义在 `server/seed.ts` 的 `POST_EXAMPLES`，可按同样的结构自由增删。
+
 ## REST API
 
 | 方法 | 路径 | 说明 | 成功响应 |
@@ -56,11 +65,51 @@ npm run typecheck  # 仅类型检查
 | 404 | `NOT_FOUND` | 路由不存在 |
 | 500 | `INTERNAL_ERROR` | 未捕获异常（固定文案，不泄露内部细节） |
 
+### 调用范例
+
 ```bash
+# 1. 健康检查与列表
 curl http://localhost:8787/api/health
+curl http://localhost:8787/api/posts
+
+# 2. 发布一条动态，记录返回的 id
 curl -X POST http://localhost:8787/api/posts \
   -H "Content-Type: application/json" \
   -d '{"content":"你好，服务端"}'
+
+# 3. 点赞 / 取消点赞（同一接口调用两次即回到原状态）
+curl -X POST http://localhost:8787/api/posts/<id>/like
+curl -X POST http://localhost:8787/api/posts/<id>/like
+
+# 4. 收藏 / 取消收藏
+curl -X POST http://localhost:8787/api/posts/<id>/favorite
+curl -X POST http://localhost:8787/api/posts/<id>/favorite
+
+# 5. 互动目标不存在 → 404 POST_NOT_FOUND
+curl -i -X POST http://localhost:8787/api/posts/not-exist/like
+```
+
+```powershell
+# PowerShell 等价写法
+$base = 'http://localhost:8787/api'
+$post = (Invoke-RestMethod -Method Post -Uri "$base/posts" -ContentType 'application/json' -Body '{"content":"来自 PowerShell"}').post
+(Invoke-RestMethod -Method Post -Uri "$base/posts/$($post.id)/like").post | ConvertTo-Json
+(Invoke-RestMethod -Method Post -Uri "$base/posts/$($post.id)/favorite").post | ConvertTo-Json
+```
+
+返回示例（点赞后）：
+
+```json
+{
+  "post": {
+    "id": "2b48e588-bac1-429f-93c9-e3480e9c331d",
+    "content": "浏览器验收用动态",
+    "createdAt": 1794556500796,
+    "likes": 1,
+    "liked": true,
+    "favorited": false
+  }
+}
 ```
 
 ## 功能
@@ -71,6 +120,7 @@ curl -X POST http://localhost:8787/api/posts \
 - **收藏视图**：信息流支持「全部 / 收藏」切换，收藏页签显示收藏条数，无收藏时展示专属空态
 - **统计看板**：总动态数、累计字数（emoji 按 1 字计）、今日发布数，以及近 7 天趋势柱状图；发布后实时更新并带数字跳动
 - **服务端存储**：刷新或多标签页访问读到的都是同一份服务端数据；进程重启后清空
+- **开箱范例**：启动注入 10 条范例动态，覆盖点赞 / 收藏的四种状态组合与近 7 天时间分布，便于直接体验分页、统计与收藏筛选；`SEED_EXAMPLES=0` 可关闭
 - **输入约束**：空内容不可发布，超过 280 字禁用发布并提示；前端本地校验 + 服务端权威校验双重保障
 - **安全渲染**：用户内容一律按纯文本插值渲染，不解析任何 HTML 或脚本
 - **异常降级**：接口不可用时提示「服务暂时不可用」，页面不崩溃，也不再写入浏览器存储
@@ -111,6 +161,7 @@ App.vue（组合层：场景层 + 品牌栏 + 三大区块 + Toast）
 | --- | --- |
 | `server/store.spec.ts` | trim、空/空白拒绝、280 边界、倒序、300 条裁剪、注入时钟/id、点赞与收藏切换、未知 id 报错、副本隔离、count |
 | `server/app.spec.ts` | REST 契约：health / 列表 / 201 / 400 三种错误码 / 点赞与收藏 200 与 404 `POST_NOT_FOUND` / 404 JSON / 500 脱敏 / CORS 与预检 |
+| `server/seed.spec.ts` | 范例自检（非空 / 不超长 / 不重复 / 时间合法）、四种互动组合、倒序、时间区间、实例隔离、开关语义 |
 | `src/services/postApi.spec.ts` | 响应解析与清洗、非 2xx 映射、非 JSON、缺失字段、`fetch` 拒绝、点赞收藏 URL 与 404 映射、请求体与错误信息脱敏 |
 | `src/stores/usePostsStore.spec.ts` | 水合成功/失败、loading 流转、发布置顶、本地与服务端校验、网络失败、300 条裁剪、跨天重算、互动原位替换与 pending 去重、收藏派生 |
 | `src/App.spec.ts` | 首屏结构、发布闭环、刷新恢复、服务不可用提示、XSS 防护、点赞/收藏闭环与收藏筛选 |
@@ -136,7 +187,8 @@ App.vue（组合层：场景层 + 品牌栏 + 三大区块 + Toast）
 ├── tsconfig.json               # 包含 src / server / shared
 ├── server/
 │   ├── app.ts                  # Hono 应用：路由、校验、JSON 错误体、CORS
-│   ├── store.ts                # 内存存储：倒序、裁剪、校验、可注入时钟与 id
+│   ├── store.ts                # 内存存储：倒序、裁剪、校验、点赞收藏切换
+│   ├── seed.ts                 # 范例数据与带种子的存储工厂（SEED_EXAMPLES 开关）
 │   └── index.ts                # @hono/node-server 启动（默认 8787）
 ├── shared/
 │   ├── post.ts                 # Post / PostInput
@@ -157,7 +209,7 @@ App.vue（组合层：场景层 + 品牌栏 + 三大区块 + Toast）
 
 ## 数据与限制
 
-- 存储位于服务端进程内存：**重启服务即清空**，最多保留最近 300 条
+- 存储位于服务端进程内存：**重启服务即清空**，最多保留最近 300 条；重启后会重新注入 10 条范例（`SEED_EXAMPLES=0` 可关闭）
 - 服务端权威：正文 `trim`、长度 ≤ 280、`id` 与 `createdAt` 由服务端生成
 - 单实例、无鉴权，CORS 放开为 `*`，仅适合本地演示；生产化需要接入持久化存储、鉴权与限流
 - 点赞 / 收藏为单用户语义：`liked`、`favorited` 是全局唯一标记，多客户端共享同一份状态，`likes` 随之在 0 / 1 之间切换
@@ -167,10 +219,11 @@ App.vue（组合层：场景层 + 品牌栏 + 三大区块 + Toast）
 
 | 项目 | 命令 | 结果 |
 | --- | --- | --- |
-| 单元 / 组件 / 集成测试 | `npm test` | 16 个文件、176 个用例全部通过（含 33 个后端用例） |
+| 单元 / 组件 / 集成测试 | `npm test` | 17 个文件、189 个用例全部通过（含 42 个后端用例） |
 | 类型检查 | `npm run typecheck` | 无错误 |
 | 生产构建 | `npm run build` | 成功（CSS 17.61 kB / JS 91.89 kB） |
 | REST 冒烟 | `curl` / `Invoke-WebRequest` | health、列表、201、400×3、280 边界、点赞 0↔1、收藏切换、`POST_NOT_FOUND` 均符合契约 |
+| 范例数据 | `npm run dev` | 启动注入 10 条范例，倒序、点赞/收藏初始状态、近 7 天统计与趋势图均符合预期 |
 | 浏览器验收 | `npm run dev` | 点赞/取消、收藏/取消、收藏筛选、收藏空态、刷新后状态保持、发布默认零互动均通过 |
 
 ## 浏览器支持
