@@ -13,6 +13,11 @@
     timeline: document.getElementById("timeline"),
     emptyState: document.getElementById("empty-state"),
     feedCount: document.getElementById("feed-count"),
+    statTotal: document.getElementById("stat-total"),
+    statChars: document.getElementById("stat-chars"),
+    statToday: document.getElementById("stat-today"),
+    chart: document.getElementById("chart"),
+    chartEmpty: document.getElementById("chart-empty"),
     toast: document.getElementById("toast"),
   };
 
@@ -133,6 +138,72 @@
     return date.getFullYear() + "年" + (date.getMonth() + 1) + "月" + date.getDate() + "日";
   }
 
+  var WEEKDAY_LABELS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+
+  function startOfDay(date) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  }
+
+  function dateKey(date) {
+    return date.getFullYear() + "-" + (date.getMonth() + 1) + "-" + date.getDate();
+  }
+
+  function charLength(text) {
+    if (typeof Array.from === "function") return Array.from(text).length;
+    return text.length;
+  }
+
+  function formatMetric(value) {
+    try {
+      return value.toLocaleString("en-US");
+    } catch (error) {
+      return String(value);
+    }
+  }
+
+  function computeStats(posts, now) {
+    var base = new Date(now);
+    var todayStart = startOfDay(base);
+    var days = [];
+    var bucket = Object.create(null);
+
+    for (var i = 6; i >= 0; i -= 1) {
+      var day = new Date(base.getFullYear(), base.getMonth(), base.getDate() - i);
+      var entry = {
+        key: dateKey(day),
+        label: i === 0 ? "今天" : WEEKDAY_LABELS[day.getDay()],
+        count: 0
+      };
+      days.push(entry);
+      bucket[entry.key] = entry;
+    }
+
+    var chars = 0;
+    var today = 0;
+
+    for (var j = 0; j < posts.length; j += 1) {
+      var post = posts[j];
+      chars += charLength(post.content);
+      if (post.createdAt >= todayStart) today += 1;
+
+      var hit = bucket[dateKey(new Date(post.createdAt))];
+      if (hit) hit.count += 1;
+    }
+
+    var weekTotal = 0;
+    for (var k = 0; k < days.length; k += 1) {
+      weekTotal += days[k].count;
+    }
+
+    return {
+      total: posts.length,
+      chars: chars,
+      today: today,
+      weekTotal: weekTotal,
+      days: days
+    };
+  }
+
   function showToast(message) {
     els.toast.textContent = message;
     els.toast.classList.add("is-visible");
@@ -248,8 +319,102 @@
   };
 
   /* ---------------------------------------------------------
+     统计看板视图
+     --------------------------------------------------------- */
+  function setMetric(el, value, animate) {
+    el.textContent = formatMetric(value);
+    if (!animate) return;
+    var box = el.parentNode;
+    box.classList.remove("is-bump");
+    void box.offsetWidth;
+    box.classList.add("is-bump");
+  }
+
+  var statsView = {
+    update: function (stats, animate) {
+      setMetric(els.statTotal, stats.total, animate);
+      setMetric(els.statChars, stats.chars, animate);
+      setMetric(els.statToday, stats.today, animate);
+      this.renderChart(stats);
+    },
+
+    renderChart: function (stats) {
+      var hasData = stats.weekTotal > 0;
+      els.chart.textContent = "";
+      els.chart.classList.toggle("is-empty", !hasData);
+      els.chartEmpty.classList.toggle("is-visible", !hasData);
+
+      if (!hasData) {
+        els.chart.setAttribute("aria-label", "近 7 天还没有发布记录");
+        return;
+      }
+
+      var max = 0;
+      for (var i = 0; i < stats.days.length; i += 1) {
+        if (stats.days[i].count > max) max = stats.days[i].count;
+      }
+
+      var fragment = document.createDocumentFragment();
+      var summary = [];
+
+      for (var j = 0; j < stats.days.length; j += 1) {
+        var day = stats.days[j];
+        var isToday = j === stats.days.length - 1;
+
+        var col = document.createElement("div");
+        col.className = "chart__col" + (isToday ? " is-today" : "");
+        col.title = day.label + " · " + day.count + " 条";
+
+        var count = document.createElement("span");
+        count.className = "chart__count";
+        count.textContent = day.count > 0 ? String(day.count) : "";
+
+        var track = document.createElement("div");
+        track.className = "chart__track";
+
+        var bar = document.createElement("span");
+        bar.className = "chart__bar";
+        if (day.count > 0) {
+          var pct = Math.max(8, Math.round((day.count / max) * 100));
+          bar.style.setProperty("--bar", pct + "%");
+        } else {
+          bar.classList.add("is-zero");
+        }
+        track.appendChild(bar);
+
+        var label = document.createElement("span");
+        label.className = "chart__day";
+        label.textContent = day.label;
+
+        col.appendChild(count);
+        col.appendChild(track);
+        col.appendChild(label);
+        fragment.appendChild(col);
+        summary.push(day.label + " " + day.count + " 条");
+      }
+
+      els.chart.appendChild(fragment);
+      els.chart.setAttribute("aria-label", "近 7 天共发布 " + stats.weekTotal + " 条：" + summary.join("，"));
+    }
+  };
+
+  /* ---------------------------------------------------------
      控制层
      --------------------------------------------------------- */
+  var currentDayKey = dateKey(new Date());
+
+  function refreshStats(animate) {
+    statsView.update(computeStats(state.posts, Date.now()), animate);
+  }
+
+  function checkDayRollover() {
+    var key = dateKey(new Date());
+    if (key !== currentDayKey) {
+      currentDayKey = key;
+      refreshStats(false);
+    }
+  }
+
   function refreshTimestamps() {
     var nodes = els.timeline.querySelectorAll(".post");
     for (var i = 0; i < nodes.length; i += 1) {
@@ -309,6 +474,7 @@
     var saved = store.save(state.posts);
 
     view.prependItem(post);
+    refreshStats(true);
     view.resetComposer();
     view.flashSuccess();
     els.input.focus();
@@ -344,15 +510,22 @@
     });
 
     document.addEventListener("visibilitychange", function () {
-      if (!document.hidden) refreshTimestamps();
+      if (!document.hidden) {
+        refreshTimestamps();
+        checkDayRollover();
+      }
     });
 
-    window.setInterval(refreshTimestamps, 60 * 1000);
+    window.setInterval(function () {
+      refreshTimestamps();
+      checkDayRollover();
+    }, 60 * 1000);
   }
 
   function init() {
     state.posts = store.load();
     view.renderList(state.posts);
+    refreshStats(false);
     view.updateCounter(0);
     view.toggleSubmit(false);
     bindEvents();

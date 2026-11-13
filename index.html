@@ -84,6 +84,31 @@
         </div>
       </section>
 
+      <section class="stats glass" aria-labelledby="stats-title">
+        <div class="stats__header">
+          <h2 class="stats__title" id="stats-title">统计看板</h2>
+          <span class="stats__tag">近 7 天</span>
+        </div>
+        <dl class="stat-grid">
+          <div class="stat">
+            <dt class="stat__label">总动态</dt>
+            <dd class="stat__value"><span id="stat-total">0</span><span class="stat__unit">条</span></dd>
+          </div>
+          <div class="stat">
+            <dt class="stat__label">累计字数</dt>
+            <dd class="stat__value"><span id="stat-chars">0</span><span class="stat__unit">字</span></dd>
+          </div>
+          <div class="stat">
+            <dt class="stat__label">今日发布</dt>
+            <dd class="stat__value"><span id="stat-today">0</span><span class="stat__unit">条</span></dd>
+          </div>
+        </dl>
+        <div class="stats__chart">
+          <div class="chart" id="chart" role="img" aria-label="近 7 天还没有发布记录"></div>
+          <p class="chart__empty" id="chart-empty">近 7 天还没有发布记录</p>
+        </div>
+      </section>
+
       <section class="feed" aria-labelledby="feed-title">
         <div class="feed__header">
           <h2 class="feed__title" id="feed-title">最新动态</h2>

@@ -529,6 +529,229 @@ body {
 }
 
 /* =========================================================
+   统计看板
+   ========================================================= */
+.stats {
+  margin-top: 16px;
+  padding: 18px 20px 16px;
+  border-radius: var(--radius-lg);
+}
+
+.stats__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 13px;
+}
+
+.stats__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #5a4433;
+}
+
+.stats__tag {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(217, 98, 43, 0.1);
+  color: var(--primary-600);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.stat {
+  padding: 10px 12px 11px;
+  border: 1px solid rgba(234, 217, 198, 0.75);
+  border-radius: 12px;
+  background: rgba(243, 228, 211, 0.5);
+  transition: background 0.25s var(--ease), border-color 0.25s var(--ease);
+}
+
+.stat:hover {
+  background: rgba(243, 228, 211, 0.78);
+  border-color: rgba(217, 98, 43, 0.22);
+}
+
+.stat__label {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-soft);
+  letter-spacing: 0.02em;
+}
+
+.stat__value {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  margin: 2px 0 0;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat__value > span:first-child {
+  display: inline-block;
+}
+
+.stat__unit {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--text-faint);
+  letter-spacing: 0;
+}
+
+.stat__value.is-bump {
+  animation: stat-bump 0.4s var(--ease);
+}
+
+.stats__chart {
+  margin-top: 14px;
+  padding-top: 13px;
+  border-top: 1px solid var(--line);
+}
+
+.chart {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  height: 112px;
+}
+
+.chart.is-empty {
+  display: none;
+}
+
+.chart__col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  height: 100%;
+}
+
+.chart__count {
+  height: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.chart__track {
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  border-radius: 7px;
+  background: rgba(234, 217, 198, 0.38);
+  overflow: hidden;
+  transition: background 0.25s var(--ease), box-shadow 0.25s var(--ease);
+}
+
+.chart__col.is-today .chart__track {
+  background: rgba(242, 166, 90, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(217, 98, 43, 0.18);
+}
+
+.chart__track:hover {
+  background: rgba(234, 217, 198, 0.62);
+}
+
+.chart__bar {
+  width: 100%;
+  height: var(--bar, 4%);
+  border-radius: 7px 7px 4px 4px;
+  background: linear-gradient(180deg, #f2a65a 0%, #d9622b 58%, #b23a48 100%);
+  transform-origin: bottom center;
+  animation: bar-rise 0.6s var(--ease) both;
+  transition: height 0.48s var(--ease);
+}
+
+.chart__bar.is-zero {
+  height: 6%;
+  background: rgba(178, 58, 72, 0.22);
+}
+
+.chart__day {
+  font-size: 10.5px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.chart__col.is-today .chart__day {
+  color: var(--primary-600);
+  font-weight: 600;
+}
+
+.chart__col.is-today .chart__day::after {
+  content: "";
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  margin-left: 3px;
+  border-radius: 50%;
+  background: var(--primary-500);
+  vertical-align: middle;
+}
+
+.chart__empty {
+  display: none;
+  margin: 8px 0 4px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+
+.chart__empty.is-visible {
+  display: block;
+}
+
+@keyframes bar-rise {
+  from {
+    transform: scaleY(0.02);
+    opacity: 0.4;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+@keyframes stat-bump {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  35% {
+    transform: translateY(-3px);
+    opacity: 0.65;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* =========================================================
    时间线
    ========================================================= */
 .feed {
@@ -836,6 +1059,36 @@ body {
 
   .btn {
     padding: 8px 17px;
+  }
+
+  .stats {
+    padding: 15px 16px 13px;
+    border-radius: 18px;
+  }
+
+  .stats__header {
+    margin-bottom: 11px;
+  }
+
+  .stat {
+    padding: 8px 10px 9px;
+  }
+
+  .stat__value {
+    font-size: 19px;
+  }
+
+  .stat__unit {
+    font-size: 10px;
+  }
+
+  .chart {
+    height: 92px;
+    gap: 5px;
+  }
+
+  .chart__day {
+    font-size: 9.5px;
   }
 
   .feed {
