@@ -4,6 +4,7 @@ import { MAX_LENGTH, NEAR_LENGTH_THRESHOLD, SUCCESS_FLASH_MS } from '@/config/co
 import { useAutoResizeTextarea } from '@/composables/useAutoResizeTextarea'
 import { usePostsStore } from '@/stores/usePostsStore'
 import { useToastStore } from '@/stores/useToastStore'
+import type { PublishFailureReason } from '@/types/post'
 
 const postsStore = usePostsStore()
 const toastStore = useToastStore()
@@ -11,6 +12,8 @@ const toastStore = useToastStore()
 const draft = ref('')
 const composing = ref(false)
 const flashed = ref(false)
+/** 请求在飞行中：既禁用按钮，也拦截重复提交。 */
+const submitting = ref(false)
 const inputRef = ref<HTMLTextAreaElement | null>(null)
 const { resize } = useAutoResizeTextarea(inputRef)
 
@@ -19,8 +22,17 @@ let flashTimer: ReturnType<typeof setTimeout> | undefined
 const length = computed(() => draft.value.length)
 const isNearLimit = computed(() => length.value >= NEAR_LENGTH_THRESHOLD && length.value <= MAX_LENGTH)
 const isOverLimit = computed(() => length.value > MAX_LENGTH)
-const canSubmit = computed(() => draft.value.trim().length > 0 && !isOverLimit.value)
+const canSubmit = computed(
+  () => draft.value.trim().length > 0 && !isOverLimit.value && !submitting.value,
+)
 const submitLabel = computed(() => (flashed.value ? '已发布' : '发布'))
+
+/** 失败原因到提示文案的唯一映射点。 */
+function failureMessage(reason: PublishFailureReason): string {
+  if (reason === 'too-long') return `内容超出 ${MAX_LENGTH} 字限制`
+  if (reason === 'unavailable') return '发布失败，服务暂时不可用，请稍后重试'
+  return '写点什么再发布吧'
+}
 
 function flashSuccess(): void {
   flashed.value = true
@@ -30,30 +42,40 @@ function flashSuccess(): void {
   }, SUCCESS_FLASH_MS)
 }
 
-function submit(): void {
-  if (composing.value) return
+async function submit(): Promise<void> {
+  if (composing.value || submitting.value) return
 
-  if (!canSubmit.value) {
+  // 本地校验不通过时不发请求，直接给出提示
+  if (draft.value.trim().length === 0 || isOverLimit.value) {
     toastStore.show(isOverLimit.value ? `内容超出 ${MAX_LENGTH} 字限制` : '写点什么再发布吧')
     inputRef.value?.focus()
     return
   }
 
-  const result = postsStore.publish(draft.value)
-  if (!result.ok) {
-    toastStore.show(result.reason === 'too-long' ? `内容超出 ${MAX_LENGTH} 字限制` : '写点什么再发布吧')
-    inputRef.value?.focus()
-    return
-  }
+  submitting.value = true
+  // 记住提交时的草稿：请求飞在路上时用户可能继续输入，成功后不能一并清掉
+  const submitted = draft.value
 
-  draft.value = ''
-  flashSuccess()
-  toastStore.show(result.persisted ? '发布成功' : '已发布，但本地存储不可用，刷新后会丢失')
+  try {
+    const result = await postsStore.publish(submitted)
 
-  nextTick(() => {
+    if (!result.ok) {
+      // 失败时保留草稿，方便用户重试
+      toastStore.show(failureMessage(result.reason))
+      inputRef.value?.focus()
+      return
+    }
+
+    if (draft.value === submitted) draft.value = ''
+    flashSuccess()
+    toastStore.show('发布成功')
+
+    await nextTick()
     resize()
     inputRef.value?.focus()
-  })
+  } finally {
+    submitting.value = false
+  }
 }
 
 function handleInput(): void {
@@ -66,7 +88,7 @@ function handleKeydown(event: KeyboardEvent): void {
   if (composing.value) return
 
   event.preventDefault()
-  submit()
+  void submit()
 }
 
 function handleCompositionStart(): void {

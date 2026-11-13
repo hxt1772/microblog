@@ -152,5 +152,14 @@
   color: var(--text-faint);
 }
 
+/* 水合期间的轻量占位，避免空态与真实空列表混淆 */
+.feed__loading {
+  margin: 0;
+  padding: 22px 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-faint);
+}
+
 
 

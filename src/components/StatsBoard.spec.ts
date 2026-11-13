@@ -1,27 +1,26 @@
+import { flushPromises } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
-import { STORAGE_KEY } from '@/config/constants'
 import { usePostsStore } from '@/stores/usePostsStore'
+import { installFakeServer } from '@/test-utils/fakeServer'
+import type { FakeServerSeed } from '@/test-utils/fakeServer'
 import { mountWithPinia } from '@/test-utils/mount'
-
-import type { Post } from '@/types/post'
 import StatsBoard from './StatsBoard.vue'
 
 const NOW = new Date(2026, 10, 13, 15, 30, 0).getTime()
 
-function seed(posts: Post[]): void {
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(posts))
-}
-
-async function mountBoard() {
+/** 安装 fake server 并挂载统计看板，随后完成水合。 */
+async function mountBoard(seed: readonly FakeServerSeed[] = []) {
+  installFakeServer({ now: () => NOW, seed })
   const { wrapper } = mountWithPinia(StatsBoard)
-  usePostsStore().hydrate(NOW)
-  await wrapper.vm.$nextTick()
-  return wrapper
+  const store = usePostsStore()
+  await store.hydrate(NOW)
+  await flushPromises()
+  return { wrapper, store }
 }
 
 describe('StatsBoard', () => {
   it('空数据时三项指标为 0 并展示图表空态', async () => {
-    const wrapper = await mountBoard()
+    const { wrapper } = await mountBoard()
 
     expect(wrapper.find('[data-testid="stat-total"]').text()).toBe('0')
     expect(wrapper.find('[data-testid="stat-chars"]').text()).toBe('0')
@@ -30,12 +29,11 @@ describe('StatsBoard', () => {
   })
 
   it('展示总量、累计字数（emoji 计 1）与今日条数', async () => {
-    seed([
-      { id: 'a', content: '今天👍', createdAt: NOW },
-      { id: 'b', content: '昨天', createdAt: NOW - 86_400_000 },
-      { id: 'c', content: '三天前', createdAt: NOW - 3 * 86_400_000 },
+    const { wrapper } = await mountBoard([
+      { content: '今天👍', createdAt: NOW },
+      { content: '昨天', createdAt: NOW - 86_400_000 },
+      { content: '三天前', createdAt: NOW - 3 * 86_400_000 },
     ])
-    const wrapper = await mountBoard()
 
     expect(wrapper.find('[data-testid="stat-total"]').text()).toBe('3')
     expect(wrapper.find('[data-testid="stat-chars"]').text()).toBe('8')
@@ -43,11 +41,10 @@ describe('StatsBoard', () => {
   })
 
   it('发布后指标即时更新并触发数字动画', async () => {
-    vi.useFakeTimers()
-    const wrapper = await mountBoard()
-    const store = usePostsStore()
+    const { wrapper, store } = await mountBoard()
 
-    store.publish('新增一条', NOW)
+    vi.useFakeTimers()
+    await store.publish('新增一条', NOW)
     await wrapper.vm.$nextTick()
 
     expect(wrapper.find('[data-testid="stat-total"]').text()).toBe('1')
@@ -63,12 +60,10 @@ describe('StatsBoard', () => {
 
   it('大数字使用千分位展示', async () => {
     const seeded = Array.from({ length: 300 }, (_, index) => ({
-      id: `id-${index}`,
       content: '字'.repeat(4),
       createdAt: NOW - index * 1000,
     }))
-    seed(seeded)
-    const wrapper = await mountBoard()
+    const { wrapper } = await mountBoard(seeded)
 
     expect(wrapper.find('[data-testid="stat-chars"]').text()).toBe('1,200')
   })

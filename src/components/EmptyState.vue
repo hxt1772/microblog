@@ -9,6 +9,6 @@
       </svg>
     </div>
     <p class="empty__title">还没有内容</p>
-    <p class="empty__desc">发布第一条动态，它只保存在这台设备上。</p>
+    <p class="empty__desc">发布第一条动态，它会保存到服务端。</p>
   </div>
 </template>

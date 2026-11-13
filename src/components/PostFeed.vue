@@ -5,7 +5,7 @@ import EmptyState from './EmptyState.vue'
 import PostItem from './PostItem.vue'
 
 const postsStore = usePostsStore()
-const { posts, now, count } = storeToRefs(postsStore)
+const { posts, now, count, hydrated } = storeToRefs(postsStore)
 </script>
 
 <template>
@@ -15,7 +15,9 @@ const { posts, now, count } = storeToRefs(postsStore)
       <span class="badge" data-testid="feed-count" aria-live="polite">{{ count }} 条</span>
     </div>
 
-    <EmptyState v-if="posts.length === 0" />
+    <p v-if="!hydrated" class="feed__loading" data-testid="feed-loading" role="status">加载中…</p>
+
+    <EmptyState v-else-if="posts.length === 0" />
 
     <ul v-else class="timeline" data-testid="timeline" aria-live="polite">
       <PostItem v-for="post in posts" :key="post.id" :post="post" :now="now" />

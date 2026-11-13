@@ -1,39 +1,51 @@
+import { flushPromises } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
-import { STORAGE_KEY } from '@/config/constants'
 import { usePostsStore } from '@/stores/usePostsStore'
+import { installFakeServer } from '@/test-utils/fakeServer'
+import type { FakeServerSeed } from '@/test-utils/fakeServer'
 import { mountWithPinia } from '@/test-utils/mount'
-import type { Post } from '@/types/post'
 import PostFeed from './PostFeed.vue'
 
 const NOW = new Date(2026, 10, 13, 15, 30, 0).getTime()
 
-function seed(posts: Post[]): void {
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(posts))
-}
-
-async function mountFeed() {
+/** 安装 fake server 并挂载列表，随后完成水合。 */
+async function mountFeed(seed: readonly FakeServerSeed[] = []) {
+  installFakeServer({ now: () => NOW, seed })
   const { wrapper } = mountWithPinia(PostFeed)
-  usePostsStore().hydrate(NOW)
-  await wrapper.vm.$nextTick()
-  return wrapper
+  const store = usePostsStore()
+  await store.hydrate(NOW)
+  await flushPromises()
+  return { wrapper, store }
 }
 
 describe('PostFeed', () => {
+  it('水合前展示加载态，水合后消失', async () => {
+    installFakeServer()
+    const { wrapper } = mountWithPinia(PostFeed)
+
+    expect(wrapper.find('[data-testid="feed-loading"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="empty-state"]').exists()).toBe(false)
+
+    await usePostsStore().hydrate(NOW)
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="feed-loading"]').exists()).toBe(false)
+  })
+
   it('无内容时展示空状态与 0 条计数', async () => {
-    const wrapper = await mountFeed()
+    const { wrapper } = await mountFeed()
 
     expect(wrapper.text()).toContain('还没有内容')
-    expect(wrapper.text()).toContain('发布第一条动态，它只保存在这台设备上。')
+    expect(wrapper.text()).toContain('发布第一条动态，它会保存到服务端。')
     expect(wrapper.find('[data-testid="feed-count"]').text()).toBe('0 条')
     expect(wrapper.findAll('[data-testid="post-item"]')).toHaveLength(0)
   })
 
-  it('按倒序渲染动态并更新计数', async () => {
-    seed([
-      { id: 'old', content: '较早的动态', createdAt: NOW - 3_600_000 },
-      { id: 'new', content: '最新的动态', createdAt: NOW },
+  it('按倒序渲染服务端动态并更新计数', async () => {
+    const { wrapper } = await mountFeed([
+      { content: '较早的动态', createdAt: NOW - 3_600_000 },
+      { content: '最新的动态', createdAt: NOW },
     ])
-    const wrapper = await mountFeed()
 
     const items = wrapper.findAll('[data-testid="post-item"]')
     expect(items).toHaveLength(2)
@@ -44,11 +56,10 @@ describe('PostFeed', () => {
   })
 
   it('新发布的动态立即出现在列表顶部', async () => {
-    seed([{ id: 'old', content: '旧动态', createdAt: NOW - 3_600_000 }])
-    const wrapper = await mountFeed()
+    const { wrapper, store } = await mountFeed([{ content: '旧动态', createdAt: NOW - 3_600_000 }])
 
-    usePostsStore().publish('新动态', NOW)
-    await wrapper.vm.$nextTick()
+    await store.publish('新动态', NOW)
+    await flushPromises()
 
     const items = wrapper.findAll('[data-testid="post-item"]')
     expect(items).toHaveLength(2)

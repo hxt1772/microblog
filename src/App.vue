@@ -13,10 +13,10 @@ import { useToastStore } from './stores/useToastStore'
 const postsStore = usePostsStore()
 const toastStore = useToastStore()
 
-onMounted(() => {
-  postsStore.hydrate()
-  if (!postsStore.storageAvailable) {
-    toastStore.show('本地存储不可用，当前内容仅保存在内存中')
+onMounted(async () => {
+  await postsStore.hydrate()
+  if (!postsStore.apiAvailable) {
+    toastStore.show('服务暂时不可用，内容无法加载')
   }
 })
 
@@ -39,7 +39,7 @@ useRelativeTimeTicker(() => {
     </main>
 
     <footer class="footer">
-      <p>数据保存在本地浏览器，清空浏览器数据后会丢失。</p>
+      <p>内容保存在服务端内存中，重启服务后会清空。</p>
     </footer>
   </div>
 

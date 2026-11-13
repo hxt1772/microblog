@@ -3,9 +3,12 @@
   "version": "2.0.0",
   "private": true,
   "type": "module",
-  "description": "微语 · Moments — 本地优先的短动态记录工具（Vue 3 + Pinia）",
+  "description": "微语 · Moments — Vue 3 + Pinia 前端 + Hono REST API 后端（服务端内存存储）",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently -n api,web -c cyan,magenta \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:api": "tsx watch server/index.ts",
+    "dev:web": "vite",
+    "start:api": "tsx server/index.ts",
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
@@ -13,6 +16,8 @@
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
+    "@hono/node-server": "^2.1.8",
+    "hono": "^4.13.18",
     "pinia": "^4.1.0",
     "vue": "^3.5.45"
   },
@@ -22,7 +27,9 @@
     "@vitejs/plugin-vue": "^6.0.11",
     "@vue/devtools-api": "^8.2.1",
     "@vue/test-utils": "^2.5.1",
+    "concurrently": "^10.0.7",
     "jsdom": "^31.0.0",
+    "tsx": "^4.23.15",
     "typescript": "~5.9.3",
     "vite": "^8.3.8",
     "vitest": "^5.1.0",

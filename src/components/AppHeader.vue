@@ -11,9 +11,9 @@
         <span class="brand__sub">MOMENTS</span>
       </span>
     </a>
-    <span class="status" title="内容仅保存在本机浏览器，不会上传">
+    <span class="status" title="内容保存在服务端内存中，重启服务后会清空">
       <span class="status__dot" aria-hidden="true"></span>
-      本地存储
+      服务端存储
     </span>
   </header>
 </template>

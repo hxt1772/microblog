@@ -1,11 +1,7 @@
-/** LocalStorage 键名，与纯静态版本保持一致，便于老数据无缝迁移。 */
-export const STORAGE_KEY = 'microblog.posts.v1'
+import { MAX_LENGTH } from '../../shared/constants'
 
-/** 单条动态最大字符数（按字符串 length 计）。 */
-export const MAX_LENGTH = 280
-
-/** 本地最多保留的动态条数。 */
-export const MAX_ENTRIES = 300
+/** 单条动态最大字符数与最多保留条数定义在 `shared/constants.ts`，此处重导出保持既有导入路径。 */
+export { MAX_ENTRIES, MAX_LENGTH } from '../../shared/constants'
 
 /** 接近上限的提示阈值（90%）。 */
 export const NEAR_LENGTH_THRESHOLD = Math.floor(MAX_LENGTH * 0.9)

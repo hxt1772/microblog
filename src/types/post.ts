@@ -1,9 +1,7 @@
-/** 一条动态记录，也是 LocalStorage 中持久化的最小单元。 */
-export interface Post {
-  id: string
-  content: string
-  createdAt: number
-}
+import type { Post } from '../../shared/post'
+
+/** 一条动态记录，定义在 `shared/post.ts`，前端仅重导出以保持既有导入路径。 */
+export type { Post } from '../../shared/post'
 
 /** 近 7 天趋势图中的一个日期桶。 */
 export interface DayBucket {
@@ -21,15 +19,10 @@ export interface PostStats {
   days: DayBucket[]
 }
 
-/** 仅依赖 localStorage 的最小接口，便于测试注入替身。 */
-export interface StorageLike {
-  getItem(key: string): string | null
-  setItem(key: string, value: string): void
-}
+/** 发布失败原因：本地校验不通过，或服务端暂时不可用。 */
+export type PublishFailureReason = 'empty' | 'too-long' | 'unavailable'
 
-/** 发布结果，用于区分成功、校验失败与降级落盘。 */
-export type PublishFailureReason = 'empty' | 'too-long'
-
+/** 发布结果：成功时携带服务端返回的动态，失败时只给出原因。 */
 export type PublishResult =
-  | { ok: true; post: Post; persisted: boolean }
+  | { ok: true; post: Post }
   | { ok: false; reason: PublishFailureReason }

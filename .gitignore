@@ -20,3 +20,11 @@ coverage/
 .env
 .env.local
 *.local
+
+# 本地工具与安装日志（不入库）
+.codebuddy/
+.agents/
+skills-lock.json
+install.out
+install.err
+*.log
