@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="微语 Moments — 一个轻量的本地短动态记录工具，数据只保存在你的浏览器中。" />
+  <meta name="theme-color" content="#F7F8FB" />
+  <title>微语 · Moments</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%236366F1'/%3E%3Cstop offset='1' stop-color='%238B5CF6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='18' fill='url(%23g)'/%3E%3Cpath d='M20 24h24M20 32h24M20 40h14' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="ambient ambient--top" aria-hidden="true"></div>
+  <div class="ambient ambient--bottom" aria-hidden="true"></div>
+
+  <div class="page">
+    <header class="topbar">
+      <a class="brand" href="./index.html" aria-label="微语首页">
+        <span class="brand__mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M4 7h16M4 12h16M4 17h9" />
+          </svg>
+        </span>
+        <span class="brand__text">
+          <span class="brand__name">微语</span>
+          <span class="brand__sub">MOMENTS</span>
+        </span>
+      </a>
+      <span class="status" title="内容仅保存在本机浏览器，不会上传">
+        <span class="status__dot" aria-hidden="true"></span>
+        本地存储
+      </span>
+    </header>
+
+    <main>
+      <section class="composer glass" aria-labelledby="composer-title">
+        <h2 class="sr-only" id="composer-title">发布动态</h2>
+        <div class="composer__body">
+          <span class="avatar avatar--me" aria-hidden="true">我</span>
+          <div class="composer__field">
+            <label class="sr-only" for="composer-input">此刻的想法</label>
+            <textarea
+              id="composer-input"
+              class="composer__input"
+              rows="2"
+              maxlength="500"
+              placeholder="分享此刻的想法…"
+              autocomplete="off"
+              spellcheck="false"
+            ></textarea>
+            <p class="composer__hint">Ctrl / ⌘ + Enter 快速发布</p>
+          </div>
+        </div>
+        <div class="composer__footer">
+          <div class="counter" id="counter" aria-live="polite">
+            <span class="counter__value" id="counter-value">0</span>
+            <span class="counter__limit">/ 280</span>
+          </div>
+          <button class="btn" id="submit" type="button" disabled>
+            <span class="btn__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 12l16-8-5 16-3.5-6.5L4 12z" />
+              </svg>
+            </span>
+            <span class="btn__label">发布</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="feed" aria-labelledby="feed-title">
+        <div class="feed__header">
+          <h2 class="feed__title" id="feed-title">最新动态</h2>
+          <span class="badge" id="feed-count" aria-live="polite">0 条</span>
+        </div>
+
+        <div class="empty" id="empty-state">
+          <div class="empty__art" aria-hidden="true">
+            <svg viewBox="0 0 120 90" fill="none">
+              <rect x="8" y="14" width="104" height="62" rx="16" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              <path d="M28 34h64M28 46h48M28 58h28" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".55" />
+              <circle cx="98" cy="58" r="12" fill="#EEF0F8" stroke="currentColor" stroke-width="2" />
+              <path d="M94 58h8M98 54v8" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+          </div>
+          <p class="empty__title">还没有内容</p>
+          <p class="empty__desc">发布第一条动态，它只保存在这台设备上。</p>
+        </div>
+
+        <ul class="timeline" id="timeline" aria-live="polite"></ul>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>数据保存在本地浏览器，清空浏览器数据后会丢失。</p>
+    </footer>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
