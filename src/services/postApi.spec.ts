@@ -128,7 +128,14 @@ describe('postApi / create', () => {
     expect(call?.init?.method).toBe('POST')
     expect(new Headers(call?.init?.headers).get('Content-Type')).toBe('application/json')
     expect(call?.init?.body).toBe(JSON.stringify({ content: ' 你好 ' }))
-    expect(post).toEqual({ id: 'new', content: '你好', createdAt: 1_700_000_000_000 })
+    expect(post).toEqual({
+      id: 'new',
+      content: '你好',
+      createdAt: 1_700_000_000_000,
+      likes: 0,
+      liked: false,
+      favorited: false,
+    })
   })
 
   it('400 EMPTY_CONTENT 映射为同名错误码', async () => {
@@ -199,6 +206,152 @@ describe('postApi / create', () => {
     expect(error).toBeInstanceOf(PostApiError)
     if (!(error instanceof PostApiError)) return
     expect(error.message).not.toContain(secret)
+  })
+})
+
+describe('postApi / toggleLike 与 toggleFavorite', () => {
+  it('点赞走 POST 并返回规整后的动态', async () => {
+    const { fetchImpl, calls } = createFakeFetch(() =>
+      jsonResponse({
+        post: {
+          id: 'p1',
+          content: '你好',
+          createdAt: 1_700_000_000_000,
+          likes: 3,
+          liked: true,
+          favorited: false,
+        },
+      }),
+    )
+
+    const post = await createPostApi({ fetchImpl }).toggleLike('p1')
+
+    expect(calls[0]?.url).toBe('/api/posts/p1/like')
+    expect(calls[0]?.init?.method).toBe('POST')
+    expect(post).toEqual({
+      id: 'p1',
+      content: '你好',
+      createdAt: 1_700_000_000_000,
+      likes: 3,
+      liked: true,
+      favorited: false,
+    })
+  })
+
+  it('收藏走 POST，并把脏的互动字段兜底成默认值', async () => {
+    const { fetchImpl, calls } = createFakeFetch(() =>
+      jsonResponse({
+        post: { id: 'p2', content: ' 收藏我 ', createdAt: 1_700_000_000_000, likes: -2, liked: 'yes', favorited: true },
+      }),
+    )
+
+    const post = await createPostApi({ fetchImpl }).toggleFavorite('p2')
+
+    expect(calls[0]?.url).toBe('/api/posts/p2/favorite')
+    expect(calls[0]?.init?.method).toBe('POST')
+    expect(post).toEqual({
+      id: 'p2',
+      content: '收藏我',
+      createdAt: 1_700_000_000_000,
+      likes: 0,
+      liked: false,
+      favorited: true,
+    })
+  })
+
+  it('id 按 URL 段规则编码', async () => {
+    const { fetchImpl, calls } = createFakeFetch(() =>
+      jsonResponse({ post: { id: 'a/b c', content: '特殊 id', createdAt: 1_700_000_000_000 } }),
+    )
+
+    await createPostApi({ fetchImpl }).toggleFavorite('a/b c')
+
+    expect(calls[0]?.url).toBe('/api/posts/a%2Fb%20c/favorite')
+  })
+
+  it('404 且错误码为 POST_NOT_FOUND 时抛 NOT_FOUND', async () => {
+    const { fetchImpl } = createFakeFetch(() =>
+      jsonResponse({ error: { code: 'POST_NOT_FOUND', message: '动态不存在 here' } }, 404),
+    )
+
+    const error: unknown = await createPostApi({ fetchImpl })
+      .toggleLike('missing')
+      .catch((reason: unknown) => reason)
+
+    expect(error).toBeInstanceOf(PostApiError)
+    if (!(error instanceof PostApiError)) return
+    expect(error.code).toBe('NOT_FOUND')
+    expect(error.status).toBe(404)
+    expect(error.message).toBe('动态不存在')
+  })
+
+  it('404 但错误码未知时按 SERVER 处理', async () => {
+    const { fetchImpl } = createFakeFetch(() => jsonResponse({ error: { code: 'UNKNOWN' } }, 404))
+
+    await expect(createPostApi({ fetchImpl }).toggleFavorite('p1')).rejects.toMatchObject({
+      code: 'SERVER',
+      status: 404,
+    })
+  })
+
+  it('404 且响应体不是 JSON 时按 SERVER 处理', async () => {
+    const { fetchImpl } = createFakeFetch(() => textResponse('not found', 404))
+
+    await expect(createPostApi({ fetchImpl }).toggleLike('p1')).rejects.toMatchObject({
+      code: 'SERVER',
+      status: 404,
+    })
+  })
+
+  it('500 时抛 SERVER', async () => {
+    const { fetchImpl } = createFakeFetch(() => jsonResponse({ error: { code: 'INTERNAL_ERROR' } }, 500))
+
+    await expect(createPostApi({ fetchImpl }).toggleLike('p1')).rejects.toMatchObject({
+      code: 'SERVER',
+      status: 500,
+    })
+  })
+
+  it('缺少 post 字段时抛 INVALID_RESPONSE', async () => {
+    const { fetchImpl } = createFakeFetch(() => jsonResponse({}))
+
+    await expect(createPostApi({ fetchImpl }).toggleLike('p1')).rejects.toMatchObject({
+      code: 'INVALID_RESPONSE',
+    })
+  })
+
+  it('post 字段不是对象时抛 INVALID_RESPONSE', async () => {
+    const { fetchImpl } = createFakeFetch(() => jsonResponse({ post: 'oops' }))
+
+    await expect(createPostApi({ fetchImpl }).toggleFavorite('p1')).rejects.toMatchObject({
+      code: 'INVALID_RESPONSE',
+    })
+  })
+
+  it('post 缺少有效内容时抛 INVALID_RESPONSE', async () => {
+    const { fetchImpl } = createFakeFetch(() => jsonResponse({ post: { id: 'p1', content: '   ' } }))
+
+    await expect(createPostApi({ fetchImpl }).toggleLike('p1')).rejects.toMatchObject({
+      code: 'INVALID_RESPONSE',
+    })
+  })
+
+  it('返回的 id 与请求 id 不一致时抛 INVALID_RESPONSE', async () => {
+    const { fetchImpl } = createFakeFetch(() =>
+      jsonResponse({ post: { id: 'other', content: '别人的动态', createdAt: 1_700_000_000_000 } }),
+    )
+
+    await expect(createPostApi({ fetchImpl }).toggleLike('p1')).rejects.toMatchObject({
+      code: 'INVALID_RESPONSE',
+    })
+  })
+
+  it('fetch reject 时抛 NETWORK', async () => {
+    const { fetchImpl } = createFakeFetch(() => Promise.reject(new Error('offline')))
+
+    await expect(createPostApi({ fetchImpl }).toggleLike('p1')).rejects.toMatchObject({
+      code: 'NETWORK',
+    })
   })
 })
 

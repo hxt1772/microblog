@@ -11,7 +11,7 @@ function statsFor(posts: Post[]) {
 }
 
 function makePost(content: string, createdAt: number, id = `id-${createdAt}-${content}`): Post {
-  return { id, content, createdAt }
+  return { id, content, createdAt, likes: 0, liked: false, favorited: false }
 }
 
 describe('TrendChart', () => {

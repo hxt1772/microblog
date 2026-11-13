@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { MAX_ENTRIES, MAX_LENGTH } from '../shared/constants'
-import { PostValidationError, createPostStore } from './store'
+import { PostNotFoundError, PostValidationError, createPostStore } from './store'
 
 /** 返回依次递增的时钟，便于断言插入顺序。 */
 function createClock(start = 1_700_000_000_000): () => number {
@@ -30,6 +30,17 @@ function catchValidationError(run: () => void): PostValidationError {
     throw error
   }
   throw new Error('预期抛出 PostValidationError，但调用正常返回')
+}
+
+/** 捕获「动态不存在」错误，便于断言 name / code / message。 */
+function catchNotFoundError(run: () => void): PostNotFoundError {
+  try {
+    run()
+  } catch (error) {
+    if (error instanceof PostNotFoundError) return error
+    throw error
+  }
+  throw new Error('预期抛出 PostNotFoundError，但调用正常返回')
 }
 
 describe('createPostStore', () => {
@@ -108,7 +119,14 @@ describe('createPostStore', () => {
 
     const post = store.add({ content: '确定性' })
 
-    expect(post).toEqual({ id: 'fixed-id', content: '确定性', createdAt: 42 })
+    expect(post).toEqual({
+      id: 'fixed-id',
+      content: '确定性',
+      createdAt: 42,
+      likes: 0,
+      liked: false,
+      favorited: false,
+    })
   })
 
   it('list 返回副本，调用方修改不影响内部状态', () => {
@@ -116,7 +134,7 @@ describe('createPostStore', () => {
     store.add({ content: '原始内容' })
 
     const snapshot = store.list()
-    snapshot.push({ id: 'x', content: '外部塞入', createdAt: 0 })
+    snapshot.push({ id: 'x', content: '外部塞入', createdAt: 0, likes: 0, liked: false, favorited: false })
     const first = snapshot[0]
     if (first) first.content = '被篡改'
 
@@ -132,5 +150,106 @@ describe('createPostStore', () => {
     store.add({ content: '一' })
     store.add({ content: '二' })
     expect(store.count()).toBe(2)
+  })
+})
+
+describe('createPostStore 互动切换', () => {
+  /** 建一个只有一条动态的 store，返回 id 便于后续操作。 */
+  function setup(): { store: ReturnType<typeof createPostStore>; id: string } {
+    const store = createPostStore({ now: createClock(), createId: createIdGenerator() })
+    const post = store.add({ content: '待互动' })
+    return { store, id: post.id }
+  }
+
+  it('首次 toggleLike 让 likes 加一并置 liked 为 true', () => {
+    const { store, id } = setup()
+
+    const post = store.toggleLike(id)
+
+    expect(post.likes).toBe(1)
+    expect(post.liked).toBe(true)
+    expect(store.list()[0]?.likes).toBe(1)
+    expect(store.list()[0]?.liked).toBe(true)
+  })
+
+  it('再次 toggleLike 取消点赞，likes 回到 0 且不为负', () => {
+    const { store, id } = setup()
+
+    store.toggleLike(id)
+    const post = store.toggleLike(id)
+
+    expect(post.likes).toBe(0)
+    expect(post.liked).toBe(false)
+  })
+
+  it('多次来回切换后 likes 始终非负', () => {
+    const { store, id } = setup()
+
+    for (let round = 0; round < 3; round += 1) {
+      expect(store.toggleLike(id).likes).toBe(1)
+      expect(store.toggleLike(id).likes).toBe(0)
+    }
+
+    expect(store.list()[0]?.likes).toBe(0)
+  })
+
+  it('toggleFavorite 只切换 favorited，不影响点赞状态', () => {
+    const { store, id } = setup()
+
+    const favorited = store.toggleFavorite(id)
+
+    expect(favorited.favorited).toBe(true)
+    expect(favorited.likes).toBe(0)
+    expect(favorited.liked).toBe(false)
+
+    const cancelled = store.toggleFavorite(id)
+
+    expect(cancelled.favorited).toBe(false)
+    expect(cancelled.likes).toBe(0)
+    expect(cancelled.liked).toBe(false)
+  })
+
+  it('点赞与收藏互不干扰', () => {
+    const { store, id } = setup()
+
+    store.toggleLike(id)
+    store.toggleFavorite(id)
+    const post = store.toggleLike(id)
+
+    expect(post.liked).toBe(false)
+    expect(post.likes).toBe(0)
+    expect(post.favorited).toBe(true)
+  })
+
+  it('未知 id 抛 PostNotFoundError 且不改变内部状态', () => {
+    const { store } = setup()
+    const before = store.list()
+
+    for (const run of [() => store.toggleLike('missing'), () => store.toggleFavorite('missing')]) {
+      const error = catchNotFoundError(run)
+
+      expect(error.name).toBe('PostNotFoundError')
+      expect(error.code).toBe('POST_NOT_FOUND')
+      expect(error.message.length).toBeGreaterThan(0)
+    }
+
+    expect(store.count()).toBe(1)
+    expect(store.list()).toEqual(before)
+  })
+
+  it('toggle 返回副本，外部修改不影响内部状态', () => {
+    const { store, id } = setup()
+
+    const liked = store.toggleLike(id)
+    liked.likes = 999
+    liked.content = '被篡改'
+
+    const favorited = store.toggleFavorite(id)
+    favorited.favorited = false
+
+    const current = store.list()[0]
+    expect(current?.likes).toBe(1)
+    expect(current?.content).toBe('待互动')
+    expect(current?.favorited).toBe(true)
   })
 })
